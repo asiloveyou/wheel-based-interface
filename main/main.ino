@@ -23,10 +23,10 @@ void doB(){encoder.handleB();}
 ////////////////////////////////////
 
 // angle set point variable
-float target_angle = 0;
+float target_value = 0;
 // commander interface
 Commander command = Commander(Serial);
-void doTarget(char* cmd){ command.scalar(&target_angle, cmd); }
+void doTarget(char* cmd){ command.scalar(&target_value, cmd); }
 // write to thet screen
 void writeLcd(char* firstLine, char* secondLine){
   lcd.clear();
@@ -37,6 +37,13 @@ void writeLcd(char* firstLine, char* secondLine){
 }
 
 void setup() {
+
+  ////////////////////
+  /// Serial Setup ///
+  ////////////////////
+
+  Serial.begin(115200);
+
   /////////////////
   /// LCD Setup ///
   /////////////////
@@ -62,7 +69,17 @@ void setup() {
   // power supply voltage
   // default 12V
   driver.voltage_power_supply = 12;
-  driver.init();
+  // Max DC voltage allowed - default voltage_power_supply
+  driver.voltage_limit = 12;
+  // Initialize driver
+  if (driver.init()) Serial.println("Driver success!");
+  else{
+    Serial.println("Driver failed!");
+    return;
+  }
+
+  // Enable driver
+  driver.enable();
   // link the motor to the driver
   motor.linkDriver(&driver);
 
@@ -71,7 +88,10 @@ void setup() {
   ///////////////////
 
   // set control loop to be used
-  motor.controller = MotionControlType::angle;
+  // case of angle control
+  // motor.controller = MotionControlType::angle;
+  // case of velocity control
+  motor.controller = MotionControlType::velocity_openloop;
   
   // controller configuration based on the control type 
   // velocity PI controller parameters
@@ -100,17 +120,15 @@ void setup() {
   // initialize motor
   motor.init();
   // align encoder and start FOC
-  motor.initFOC();
+  // motor.initFOC();
 
   ////////////////////
   /// Serial Setup ///
   ///////////////////.
 
   // add target command T
-  command.add('T', doTarget, "target angle");
-
-  // monitoring port
-  Serial.begin(115200);
+  command.add('T', doTarget, "target value");
+  
   Serial.println("Motor ready.");
   Serial.println("Set the target angle using serial terminal:");
 
@@ -118,12 +136,22 @@ void setup() {
   _delay(1000);
 }
 
+float curAngle = 0.0f;
+
 void loop() {
-  // iterative FOC function
+  encoder.update();
+  if(curAngle != encoder.getAngle()){
+    curAngle = encoder.getAngle();
+    Serial.print(curAngle);
+    Serial.print("\n");
+  }
+
+  // // iterative FOC function
   motor.loopFOC();
 
-  // function calculating the outer position loop and setting the target position 
-  motor.move(target_angle);
+  // // function calculating the outer position loop and setting the target position 
+  // motor.move(target_value);
+  motor.move();
 
   // user communication
   command.run();
