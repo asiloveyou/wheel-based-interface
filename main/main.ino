@@ -22,18 +22,35 @@ void doB(){encoder.handleB();}
 /// Global Variable and Function ///
 ////////////////////////////////////
 
-// angle set point variable
-float target_value = 0;
-// commander interface
+// Other Usage //
+char printBuffer[10];
+bool displayOnRefresh = false;
+float target_angle = 60.0f;
+
+// Commander interface //
 Commander command = Commander(Serial);
-void doTarget(char* cmd){ command.scalar(&target_value, cmd); }
-// write to thet screen
+void doTarget(char* cmd){ command.scalar(&target_angle, cmd); }
+
+// Write to LCD screen //
 void writeLcd(char* firstLine, char* secondLine){
   lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print(firstLine);
   lcd.setCursor(0, 1);
   lcd.print(secondLine);
+}
+
+// Write to LCD screen on loop //
+// Since loop()runs on 117 kHz (117,000 times per second)
+// The effect is defined as it is
+// *delay(ms) = (x)ms interval
+void writeLcdLoop(char* firstLine, char* secondLine){
+  if(!displayOnRefresh){
+    displayOnRefresh = true;
+    writeLcd(firstLine, secondLine);
+    delay(200);
+    displayOnRefresh = false;
+  }
 }
 
 void setup() {
@@ -120,7 +137,7 @@ void setup() {
   // initialize motor
   motor.init();
   // align encoder and start FOC
-  // motor.initFOC();
+  motor.initFOC();
 
   ////////////////////
   /// Serial Setup ///
@@ -136,22 +153,15 @@ void setup() {
   _delay(1000);
 }
 
-float curAngle = 0.0f;
-
 void loop() {
   encoder.update();
-  if(curAngle != encoder.getAngle()){
-    curAngle = encoder.getAngle();
-    Serial.print(curAngle);
-    Serial.print("\n");
-  }
 
   // // iterative FOC function
   motor.loopFOC();
 
   // // function calculating the outer position loop and setting the target position 
   // motor.move(target_value);
-  motor.move();
+  motor.move(target_angle);
 
   // user communication
   command.run();
