@@ -2,6 +2,7 @@
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 
+
 //////////////////////
 /// Initialization ///
 //////////////////////
@@ -12,6 +13,8 @@ BLDCDriver3PWM driver = BLDCDriver3PWM(5, 9, 6, 8);
 Encoder encoder = Encoder(3, 2, 2048, 4);
 void doA(){encoder.handleA();}
 void doB(){encoder.handleB();}
+// init motor
+BLDCMotor motor = BLDCMotor(11);
 // init LCD
 LiquidCrystal_I2C lcd(0x27,20,4);
 
@@ -87,8 +90,16 @@ void setup() {
 
   // enable driver
   driver.enable();
-  // driver.setPhaseState(_HIGH_IMPEDANCE , _HIGH_IMPEDANCE, _HIGH_IMPEDANCE);
-  // driver.setPwm(1,1,1);
+
+  ///////////////////
+  /// Motor Setup ///
+  ///////////////////
+
+  motor.voltage_limit = 3;
+  motor.velocity_limit = 5;
+  motor.controller = MotionControlType::velocity_openloop;
+
+  motor.init();  
 
   writeLcd("Active: ", "Driver Test");
   _delay(1000);
@@ -102,30 +113,14 @@ void loop() {
   /////////////////////
 
   // ANGLE PRINTING //
-  float ea = encoder.getAngle();
-  dtostrf(ea, 5, 3, printBuffer);
+  float angle = encoder.getAngle();
+  dtostrf(angle, 5, 3, printBuffer);
   writeLcdLoop("Current Angle", printBuffer);
 
   ////////////////////
-  // Driver Testing //
+  // Motor Testing //
   ////////////////////
 
-      // phase (A: 3V, B: 6V, C: high impedance )  
-    // set the phase C in high impedance mode - disabled or open
-    driver.setPhaseState(_ACTIVE , _ACTIVE , _HIGH_Z); // _HIGH_Z or _HIGH_IMPEDANCE
-    driver.setPwm(3, 6, 0); 
-    // _delay(1000);
-
-    // // phase (A: 3V, B: high impedance, C: 6V )  
-    // // set the phase B in high impedance mode - disabled or open
-    // driver.setPhaseState(_ACTIVE , _HIGH_IMPEDANCE, _ACTIVE);
-    // driver.setPwm(3, 0, 6);
-    // _delay(1000);
-
-    // // phase (A: high impedance, B: 3V, C: 6V )  
-    // // set the phase A in high impedance mode - disabled or open
-    // driver.setPhaseState(_HIGH_IMPEDANCE, _ACTIVE, _ACTIVE);
-    // driver.setPwm(0, 3, 6);
-    // _delay(1000);
+  motor.move();
 
 }

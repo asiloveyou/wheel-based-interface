@@ -1,6 +1,4 @@
 #include <SimpleFOC.h>
-#include <Wire.h>
-#include <LiquidCrystal_I2C.h>
 
 //////////////////////
 /// Initialization ///
@@ -12,8 +10,6 @@ BLDCMotor motor = BLDCMotor( 11 );
 BLDCDriver3PWM driver = BLDCDriver3PWM(5, 9, 6, 8);
 // init encoder
 Encoder encoder = Encoder(3, 2, 2048, 4);
-// init LCD
-LiquidCrystal_I2C lcd(0x27,20,4);
 // channel A and B callbacks
 void doA(){encoder.handleA();}
 void doB(){encoder.handleB();}
@@ -25,33 +21,10 @@ void doB(){encoder.handleB();}
 // Other Usage //
 char printBuffer[10];
 bool displayOnRefresh = false;
-float target_angle = 30.0f;
 
 // Commander interface //
 Commander command = Commander(Serial);
-void doTarget(char* cmd){ command.scalar(&target_angle, cmd); }
-
-// Write to LCD screen //
-void writeLcd(char* firstLine, char* secondLine){
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print(firstLine);
-  lcd.setCursor(0, 1);
-  lcd.print(secondLine);
-}
-
-// Write to LCD screen on loop //
-// Since loop()runs on 117 kHz (117,000 times per second)
-// The effect is defined as it is
-// *delay(ms) = (x)ms interval
-void writeLcdLoop(char* firstLine, char* secondLine){
-  if(!displayOnRefresh){
-    displayOnRefresh = true;
-    writeLcd(firstLine, secondLine);
-    delay(200);
-    displayOnRefresh = false;
-  }
-}
+void doMotor(char* cmd){ command.motor(&motor, cmd); }
 
 void setup() {
 
@@ -64,9 +37,6 @@ void setup() {
   /////////////////
   /// LCD Setup ///
   /////////////////
-  
-  lcd.init();
-  writeLcd("Program", "Initializing");
 
   /////////////////////
   /// Encoder Setup ///
@@ -104,11 +74,11 @@ void setup() {
   /// Motor Setup ///
   ///////////////////
 
-  // set control loop to be used
   // case of angle control
-  motor.controller = MotionControlType::angle;
+  // motor.controller = MotionControlType::angle;
   // case of velocity control
   // motor.controller = MotionControlType::velocity_openloop;
+  motor.controller = MotionControlType::angle;
   
   // controller configuration based on the control type 
   // velocity PI controller parameters
@@ -144,28 +114,20 @@ void setup() {
   ///////////////////.
 
   // add target command T
-  command.add('T', doTarget, "target value");
-  
-  Serial.println("Motor ready.");
-  Serial.println("Set the target angle using serial terminal:");
+  command.add('M',doMotor,'motor');
+  motor.useMonitoring(Serial);
 
-  writeLcd("Initialization", "Finished");
   _delay(1000);
 }
 
 void loop() {
   encoder.update();
-    // ANGLE PRINTING //
-  float currentAngle = encoder.getAngle();
-  dtostrf(currentAngle, 5, 3, printBuffer);
-  writeLcdLoop("Current Angle", printBuffer);
 
   // // iterative FOC function
   motor.loopFOC();
 
-  // // function calculating the outer position loop and setting the target position 
   // motor.move(target_value);
-  motor.move();
+  motor.monitor();
 
   // user communication
   command.run();
