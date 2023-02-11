@@ -8,7 +8,7 @@
 //////////////////////
 
 // init driver
-BLDCDriver3PWM driver = BLDCDriver3PWM(5, 9, 6, 8);
+  BLDCDriver3PWM driver = BLDCDriver3PWM(5, 9, 6, 8);
 // init encoder
 Encoder encoder = Encoder(3, 2, 2048, 4);
 void doA(){encoder.handleA();}
